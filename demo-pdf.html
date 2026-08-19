@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo PDF - PenAI.be</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      color: #333;
+      line-height: 1.8;
+      -webkit-font-smoothing: antialiased;
+      background: #e5e7eb;
+      padding: 20px;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      padding: 25mm;
+      background: white;
+      position: relative;
+      page-break-after: always;
+      margin: 0 auto 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .page:last-child {
+      page-break-after: auto;
+    }
+
+    .cover-page {
+      background: linear-gradient(135deg, #0066CC 0%, #004C99 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 40mm 25mm;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cover-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.3;
+      z-index: 0;
+    }
+
+    .cover-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(0, 102, 204, 0.95) 0%, rgba(0, 76, 153, 0.95) 100%);
+      z-index: 1;
+    }
+
+    .cover-content {
+      position: relative;
+      z-index: 2;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .cover-title {
+      font-size: 48px;
+      font-weight: 800;
+      color: white;
+      line-height: 1.2;
+      margin-bottom: 20px;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .cover-subtitle {
+      font-size: 20px;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.9);
+      line-height: 1.6;
+      margin-bottom: 40px;
+    }
+
+    .cover-footer {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .footer-text {
+      color: white;
+    }
+
+    .cover-date {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .toc-page {
+      padding: 40mm 25mm;
+    }
+
+    .toc-title {
+      font-size: 36px;
+      font-weight: 700;
+      color: #0066CC;
+      margin-bottom: 30px;
+      padding-bottom: 15px;
+      border-bottom: 3px solid #0066CC;
+    }
+
+    .toc-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #F5F5F5;
+    }
+
+    .toc-chapter-number {
+      font-weight: 600;
+      color: #0066CC;
+      margin-right: 10px;
+    }
+
+    .toc-chapter-title {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .toc-page-number {
+      font-weight: 500;
+      color: #666;
+    }
+
+    .chapter-header {
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 3px solid #0066CC;
+    }
+
+    .chapter-number {
+      font-size: 14px;
+      font-weight: 600;
+      color: #0066CC;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+
+    .chapter-title {
+      font-size: 36px;
+      font-weight: 700;
+      color: #333;
+      line-height: 1.3;
+      margin-bottom: 15px;
+    }
+
+    .chapter-image {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      background: #e5e7eb;
+    }
+
+    .content h2 {
+      font-size: 26px;
+      font-weight: 700;
+      color: #333;
+      margin-top: 30px;
+      margin-bottom: 15px;
+    }
+
+    .content h3 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #666;
+      margin-top: 25px;
+      margin-bottom: 12px;
+    }
+
+    .content p {
+      font-size: 14px;
+      line-height: 1.8;
+      margin-bottom: 20px;
+      text-align: justify;
+      color: #333;
+    }
+
+    .content ul {
+      margin: 20px 0 20px 30px;
+    }
+
+    .content li {
+      font-size: 14px;
+      line-height: 1.8;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .page-footer {
+      position: absolute;
+      bottom: 15mm;
+      left: 25mm;
+      right: 25mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 15px;
+      border-top: 1px solid #F5F5F5;
+      font-size: 11px;
+      color: #666;
+    }
+
+    .page-number {
+      font-weight: 500;
+    }
+
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+
+      .page {
+        margin: 0;
+        box-shadow: none;
+        page-break-after: always;
+      }
+
+      .page:last-child {
+        page-break-after: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- COVER PAGE -->
+  <div class="page cover-page">
+    <img src="https://images.pexels.com/photos/3184325/pexels-photo-3184325.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750" alt="Cover" class="cover-image" />
+    <div class="cover-overlay"></div>
+    <div class="cover-content">
+      <h1 class="cover-title">Digitale Marketing Strategie: Een Uitgebreide Gids</h1>
+      <p class="cover-subtitle">Een complete gids om je digitale marketing naar een hoger niveau te tillen</p>
+    </div>
+    <div class="cover-footer">
+      <div class="footer-text">
+        <div style="font-weight: 600; font-size: 16px; margin-bottom: 5px;">PenAI.be</div>
+        <div>Professionele content, automatisch gegenereerd</div>
+      </div>
+      <div class="cover-date">24 oktober 2025</div>
+    </div>
+  </div>
+
+  <!-- TABLE OF CONTENTS -->
+  <div class="page toc-page">
+    <h2 class="toc-title">Inhoudsopgave</h2>
+    <div class="toc-item">
+      <span class="toc-chapter-number">1.</span>
+      <span class="toc-chapter-title">Inleiding</span>
+      <span class="toc-page-number">3</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-chapter-number">2.</span>
+      <span class="toc-chapter-title">De Fundamenten Begrijpen</span>
+      <span class="toc-page-number">4</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-chapter-number">3.</span>
+      <span class="toc-chapter-title">Belangrijkste Strategieën en Benaderingen</span>
+      <span class="toc-page-number">5</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-chapter-number">4.</span>
+      <span class="toc-chapter-title">Praktische Implementatie</span>
+      <span class="toc-page-number">6</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-chapter-number">5.</span>
+      <span class="toc-chapter-title">Conclusie en Volgende Stappen</span>
+      <span class="toc-page-number">7</span>
+    </div>
+  </div>
+
+  <!-- CHAPTER 1 -->
+  <div class="page content-page">
+    <div class="chapter-header">
+      <div class="chapter-number">Hoofdstuk 1</div>
+      <h2 class="chapter-title">Inleiding</h2>
+    </div>
+    <img src="https://images.pexels.com/photos/265087/pexels-photo-265087.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750" alt="Inleiding" class="chapter-image" />
+    <div class="content">
+      <p>
+        In het huidige digitale tijdperk is een sterke online aanwezigheid niet langer een luxe, maar een noodzaak voor bedrijven van elke omvang. Digitale marketing heeft de manier waarop we met klanten communiceren en onze producten en diensten promoten fundamenteel veranderd.
+      </p>
+      <p>
+        Deze gids is ontwikkeld om je een volledig overzicht te geven van moderne digitale marketingstrategieën. Of je nu een kleine onderneming bent die net begint met online marketing, of een gevestigd bedrijf dat zijn digitale aanwezigheid wil versterken, deze gids biedt waardevolle inzichten en praktische tips.
+      </p>
+      <h3>Wat je kunt verwachten</h3>
+      <p>
+        In de komende hoofdstukken duiken we diep in de verschillende aspecten van digitale marketing. We behandelen de fundamentele concepten, verkennen geavanceerde strategieën en bieden praktische implementatieadvies.
+      </p>
+      <ul>
+        <li>Begrijpen van je doelgroep en hun online gedrag</li>
+        <li>Het opzetten van effectieve marketingcampagnes</li>
+        <li>Meten en optimaliseren van je resultaten</li>
+        <li>Trends en toekomstige ontwikkelingen in het vakgebied</li>
+      </ul>
+      <p>
+        Volgens onderzoek van McKinsey & Company (2023) investeren bedrijven die een data-gedreven marketingaanpak hanteren gemiddeld 20% meer in hun digitale kanalen en behalen zij 15-20% hogere ROI dan hun concurrenten.
+      </p>
+    </div>
+    <div class="page-footer">
+      <div class="footer-text">Gegenereerd met PenAI.be</div>
+      <div class="page-number">3</div>
+    </div>
+  </div>
+
+  <!-- CHAPTER 2 -->
+  <div class="page content-page">
+    <div class="chapter-header">
+      <div class="chapter-number">Hoofdstuk 2</div>
+      <h2 class="chapter-title">De Fundamenten Begrijpen</h2>
+    </div>
+    <img src="https://images.pexels.com/photos/590041/pexels-photo-590041.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750" alt="Fundamenten" class="chapter-image" />
+    <div class="content">
+      <p>
+        Voordat we dieper ingaan op specifieke strategieën, is het cruciaal om de fundamentele bouwstenen van digitale marketing te begrijpen. Deze basis vormt de fundering waarop al je marketinginspanningen zullen rusten.
+      </p>
+      <h3>De digitale marketingmix</h3>
+      <p>
+        Moderne digitale marketing bestaat uit verschillende disciplines die samen een krachtig ecosysteem vormen:
+      </p>
+      <ul>
+        <li><strong>Content Marketing:</strong> Het creëren en distribueren van waardevolle content om je doelgroep aan te trekken en te betrekken</li>
+        <li><strong>Social Media Marketing:</strong> Het benutten van sociale platforms om je merk te versterken en met klanten te communiceren</li>
+        <li><strong>SEO (Search Engine Optimization):</strong> Het optimaliseren van je online aanwezigheid voor zoekmachines</li>
+        <li><strong>Email Marketing:</strong> Direct communiceren met je doelgroep via gerichte emailcampagnes</li>
+        <li><strong>PPC (Pay-Per-Click):</strong> Betaalde advertenties op zoek- en sociale platforms</li>
+      </ul>
+      <h3>Je doelgroep kennen</h3>
+      <p>
+        Een van de belangrijkste aspecten van succesvolle digitale marketing is een diep begrip van je doelgroep. Studies van HubSpot (2024) tonen aan dat bedrijven die buyer personas gebruiken 73% hogere conversieratio's behalen dan bedrijven die dit niet doen.
+      </p>
+      <p>
+        Om je doelgroep effectief te bereiken, moet je begrijpen wie ze zijn, wat hun uitdagingen zijn, en hoe je product of dienst hen kan helpen. Dit vereist grondig onderzoek en continue analyse van klantgegevens.
+      </p>
+    </div>
+    <div class="page-footer">
+      <div class="footer-text">Gegenereerd met PenAI.be</div>
+      <div class="page-number">4</div>
+    </div>
+  </div>
+
+  <!-- CHAPTER 3 -->
+  <div class="page content-page">
+    <div class="chapter-header">
+      <div class="chapter-number">Hoofdstuk 3</div>
+      <h2 class="chapter-title">Belangrijkste Strategieën en Benaderingen</h2>
+    </div>
+    <img src="https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750" alt="Strategieën" class="chapter-image" />
+    <div class="content">
+      <p>
+        Nu je de fundamenten begrijpt, is het tijd om te kijken naar de strategische benaderingen die je kunt implementeren om je digitale marketingdoelen te bereiken.
+      </p>
+      <h3>Content-first strategie</h3>
+      <p>
+        Content staat centraal in moderne digitale marketing. Volgens Content Marketing Institute (2024) genereert content marketing drie keer zoveel leads als traditionele outbound marketing, terwijl het 62% minder kost.
+      </p>
+      <p>
+        Een effectieve content strategie omvat:
+      </p>
+      <ul>
+        <li>Het identificeren van onderwerpen die resoneren met je doelgroep</li>
+        <li>Het creëren van diverse contentformaten (blog posts, video's, infographics)</li>
+        <li>Consistente publicatie volgens een content kalender</li>
+        <li>Optimalisatie voor zoekmachines en gebruikerservaring</li>
+      </ul>
+      <h3>Multi-channel benadering</h3>
+      <p>
+        Je doelgroep bevindt zich op verschillende platforms en kanalen. Een geïntegreerde multi-channel strategie zorgt ervoor dat je boodschap consistent wordt gecommuniceerd over alle touchpoints.
+      </p>
+      <p>
+        Data van Salesforce (2023) laat zien dat bedrijven met een sterke multi-channel strategie 89% van hun klanten behouden, vergeleken met 33% voor bedrijven met een zwakke multi-channel strategie.
+      </p>
+      <h3>Personalisatie en segmentatie</h3>
+      <p>
+        In een wereld van informatie-overload is personalisatie de sleutel tot het doorbreken van de ruis. Door je audience te segmenteren en je boodschap aan te passen aan specifieke groepen, verhoog je dramatisch de effectiviteit van je marketing.
+      </p>
+    </div>
+    <div class="page-footer">
+      <div class="footer-text">Gegenereerd met PenAI.be</div>
+      <div class="page-number">5</div>
+    </div>
+  </div>
+
+  <!-- CHAPTER 4 -->
+  <div class="page content-page">
+    <div class="chapter-header">
+      <div class="chapter-number">Hoofdstuk 4</div>
+      <h2 class="chapter-title">Praktische Implementatie</h2>
+    </div>
+    <img src="https://images.pexels.com/photos/3184360/pexels-photo-3184360.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750" alt="Implementatie" class="chapter-image" />
+    <div class="content">
+      <p>
+        Theorie is belangrijk, maar de echte waarde ligt in de uitvoering. In dit hoofdstuk bespreken we hoe je de besproken strategieën in de praktijk kunt brengen.
+      </p>
+      <h3>Stap 1: Doelen stellen</h3>
+      <p>
+        Begin met het formuleren van SMART-doelen (Specifiek, Meetbaar, Acceptabel, Realistisch, Tijdgebonden). Volgens een studie van CoSchedule (2024) zijn bedrijven met duidelijk gedefinieerde doelen 376% succesvoller in het behalen van hun marketingdoelstellingen.
+      </p>
+      <p>
+        Voorbeelden van effectieve marketing doelen:
+      </p>
+      <ul>
+        <li>20% toename in website verkeer binnen 6 maanden</li>
+        <li>15% verhoging van de conversieratio binnen het komende kwartaal</li>
+        <li>Verdubbeling van social media engagement in 3 maanden</li>
+      </ul>
+      <h3>Stap 2: Tools en platforms selecteren</h3>
+      <p>
+        De juiste tools kunnen het verschil maken tussen succes en mislukking. Investeer in marketing automation platforms, analytics tools, en content management systemen die passen bij je behoeften en budget.
+      </p>
+      <h3>Stap 3: Content creatie workflow</h3>
+      <p>
+        Ontwikkel een gestructureerd proces voor het creëren, reviewen en publiceren van content. Dit zorgt voor consistentie en kwaliteit over al je marketinguitingen.
+      </p>
+      <h3>Stap 4: Meten en optimaliseren</h3>
+      <p>
+        Gebruik data-analyse om te begrijpen wat wel en niet werkt. Google Analytics, social media insights, en email marketing metrics geven je waardevolle inzichten om je strategie continu te verfijnen.
+      </p>
+    </div>
+    <div class="page-footer">
+      <div class="footer-text">Gegenereerd met PenAI.be</div>
+      <div class="page-number">6</div>
+    </div>
+  </div>
+
+  <!-- CHAPTER 5 -->
+  <div class="page content-page">
+    <div class="chapter-header">
+      <div class="chapter-number">Hoofdstuk 5</div>
+      <h2 class="chapter-title">Conclusie en Volgende Stappen</h2>
+    </div>
+    <img src="https://images.pexels.com/photos/3184339/pexels-photo-3184339.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750" alt="Conclusie" class="chapter-image" />
+    <div class="content">
+      <p>
+        We hebben een uitgebreide reis gemaakt door het landschap van moderne digitale marketing. Van de fundamentele concepten tot geavanceerde strategieën en praktische implementatie - je hebt nu de kennis en tools om je digitale marketing naar een hoger niveau te tillen.
+      </p>
+      <h3>Belangrijkste takeaways</h3>
+      <p>
+        Laten we de kernpunten nog eens samenvatten:
+      </p>
+      <ul>
+        <li><strong>Ken je doelgroep:</strong> Diep begrip van je klanten is de basis van elk succesvol marketinginitiatief</li>
+        <li><strong>Content is koning:</strong> Investeer in waardevolle, relevante content die je doelgroep helpt</li>
+        <li><strong>Multi-channel aanpak:</strong> Wees aanwezig waar je klanten zijn, met een consistente boodschap</li>
+        <li><strong>Data-gedreven beslissingen:</strong> Laat data je strategie sturen en optimaliseer continu</li>
+        <li><strong>Blijf leren:</strong> Digitale marketing evolueert snel - blijf op de hoogte van nieuwe trends en technologieën</li>
+      </ul>
+      <h3>Je actieplan voor de komende 90 dagen</h3>
+      <p>
+        <strong>Maand 1:</strong> Audit je huidige digitale aanwezigheid, identificeer gaps en kansen
+      </p>
+      <p>
+        <strong>Maand 2:</strong> Ontwikkel je strategie en begin met implementatie van quick wins
+      </p>
+      <p>
+        <strong>Maand 3:</strong> Meet resultaten, optimaliseer en schaal succesvolle tactieken op
+      </p>
+      <h3>Blijf verbonden</h3>
+      <p>
+        Digitale marketing is geen eenmalig project, maar een continue reis van leren, testen en optimaliseren. Omarm deze mentaliteit en je zult merken dat je resultaten blijven verbeteren.
+      </p>
+      <p>
+        Veel succes met het implementeren van deze strategieën. De digitale wereld wacht op je!
+      </p>
+    </div>
+    <div class="page-footer">
+      <div class="footer-text">Gegenereerd met PenAI.be</div>
+      <div class="page-number">7</div>
+    </div>
+  </div>
+
+</body>
+</html>

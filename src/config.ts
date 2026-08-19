@@ -1,0 +1,4 @@
+export const SUPABASE_URL = 'https://lwezzcpvuspezufndvzo.supabase.co'
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3ZXp6Y3B2dXNwZXp1Zm5kdnpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5MTcwNjUsImV4cCI6MjA3NTQ5MzA2NX0.k6baXY4qFj5lF9xOBSnUPJo2Wen6MxwpX9JgkikFn20'
+export const STRIPE_PUBLISHABLE_KEY = 'pk_live_51K17TuHwKhNjrBLQKQiPFdXBTraaSR5r7Y3dBBYptWKpaXqoxiKhgaGFLxxHdBVvXci4hztZxs0YYZP2nW0zKjdt00wTL8wwgp'
+export const LINKEDIN_CLIENT_ID = '78ztlmszhe1nob'

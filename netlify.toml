@@ -1,0 +1,18 @@
+[[edge_functions]]
+path = "/blog/*"
+function = "render-blog"
+
+[[redirects]]
+from = "/sitemap.xml"
+to = "https://lwezzcpvuspezufndvzo.supabase.co/functions/v1/sitemap"
+status = 200
+force = true
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200
+
+[build]
+publish = "dist"
+command = "npx vite build"
