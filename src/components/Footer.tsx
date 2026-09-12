@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Mail, MapPin, Phone } from 'lucide-react';
+import { BookOpen, Mail, MapPin, Phone, BarChart3 } from 'lucide-react';
 import { useLanguage } from '../lib/LanguageContext';
 
 export function Footer() {
@@ -68,6 +68,12 @@ export function Footer() {
                 <Link to="/herroepingsrecht" className="hover:text-blue-400 transition-colors">
                   {t.footerWithdrawal}
                 </Link>
+              </li>
+              <li>
+                <a href="https://segmentforce.penai.be" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-blue-400 transition-colors">
+                  <BarChart3 className="w-4 h-4" />
+                  SegmentForce
+                </a>
               </li>
             </ul>
           </div>

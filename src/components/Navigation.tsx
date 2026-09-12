@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, LogOut, FolderOpen, Settings, Store, Menu, BookOpen, PenTool, Package, DollarSign, Lightbulb, Home, Linkedin, Facebook, Sparkles, TrendingUp, Recycle, Calendar, ChevronDown, Wrench } from 'lucide-react';
+import { User, LogOut, FolderOpen, Settings, Store, Menu, BookOpen, PenTool, Package, DollarSign, Lightbulb, Home, Linkedin, Facebook, Sparkles, TrendingUp, Recycle, Calendar, ChevronDown, Wrench, BarChart3 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useLanguage } from '../lib/LanguageContext';
 
@@ -147,6 +147,20 @@ export function Navigation() {
                           <p className="text-xs text-gray-500 mt-0.5">Plan je content vooruit</p>
                         </div>
                       </Link>
+
+                      <a
+                        href="https://segmentforce.penai.be"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setToolsMenuOpen(false)}
+                        className="flex items-start gap-3 px-3 py-3 rounded-lg hover:bg-blue-50 transition-colors text-gray-700"
+                      >
+                        <BarChart3 className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-medium text-sm">SegmentForce</p>
+                          <p className="text-xs text-gray-500 mt-0.5">Doelgroep segmentatie tool</p>
+                        </div>
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -450,6 +464,16 @@ export function Navigation() {
                   <Calendar className="h-5 w-5 flex-shrink-0" />
                   <span className="font-medium">Kalender</span>
                 </Link>
+                <a
+                  href="https://segmentforce.penai.be"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeMobileMenu}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-700 hover:bg-gray-50"
+                >
+                  <BarChart3 className="h-5 w-5 flex-shrink-0" />
+                  <span className="font-medium">SegmentForce</span>
+                </a>
               </div>
 
               {user ? (
