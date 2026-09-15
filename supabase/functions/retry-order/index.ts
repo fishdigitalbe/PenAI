@@ -111,13 +111,13 @@ Deno.serve(async (req: Request) => {
         const contentTypeName = isBlog ? "blog post" : "ebook";
 
         const goalContextMap: Record<string, string> = {
-          "problem-aware": "The reader is problem-aware: clearly define the problem, its symptoms, risks and missed opportunities.",
-          "solution-aware": "The reader is solution-aware: compare solution types, methods and strategies in an educational way, without hard selling.",
-          "product-aware": `The reader is product-aware: explain how a solution like the product/service can help, highlight benefits and decision criteria.${productUrl ? ` You may reference the product at ${productUrl}.` : ""}`,
+          "problem-aware": "The reader is problem-aware: clearly define the problem, its symptoms, risks and missed opportunities. Use vivid scenarios and relatable examples to make the pain tangible.",
+          "solution-aware": "The reader is solution-aware: compare solution types, methods and strategies in an educational way, without hard selling. Use decision frameworks and evaluation criteria.",
+          "product-aware": `The reader is product-aware: explain how a solution like the product/service can help, highlight concrete benefits, ROI arguments and decision criteria.${productUrl ? ` Naturally weave in references to the product at ${productUrl}. Include 2-3 explicit links to ${productUrl} per section where relevant, using descriptive anchor text. Place links contextually within sentences.` : ""}`,
         };
         const inboundGoal = goalContextMap[contentGoal] || goalContextMap["problem-aware"];
 
-        const baseSystemPrompt = `You are a specialized inbound ${contentTypeName} writer. You create clear, structured, inspiring ${contentTypeName}s ${languageInstruction} for business audiences.
+        const baseSystemPrompt = `You are a specialized inbound ${contentTypeName} writer and B2B storytelling expert. You create compelling, well-researched ${contentTypeName}s ${languageInstruction} for business audiences.
 
 Context:
 - Target audience: ${targetAudience}
@@ -125,10 +125,30 @@ Context:
 - Inbound stage: ${contentGoal}
 - Tone: ${toneOfVoice}
 
-Guidelines:
-- No aggressive sales. Strong educational, value-first approach.
-- Self-contained sections. Avoid invented statistics.
-- No markdown formatting (#, *, -) in the content.`;
+WRITING STYLE GUIDELINES:
+- Write with energy and personality. Avoid dry, academic prose.
+- Use storytelling: open sections with real-world scenarios, mini-case-studies or relatable anecdotes that hook the reader.
+- Use rhetorical questions to provoke thought and create engagement.
+- Use analogies and metaphors to make complex concepts tangible and memorable.
+- Vary sentence length: mix short punchy sentences with longer flowing ones for rhythm.
+- Use transition phrases that guide the reader naturally (e.g. "Maar hier is het probleem...", "Stel je voor dat...", "Wat betekent dit in de praktijk?").
+- Include callout-style insights: key takeaways framed as "Onthoud dit:" or "De kern van de zaak is...".
+- Address the reader directly with "je" or "u" where appropriate.
+
+DATA & EVIDENCE GUIDELINES:
+- Include supporting data points to substantiate claims. Use industry benchmarks, research findings and trend statistics widely known in the marketing/content industry.
+- Format data as: "Onderzoek van [bron] toont aan dat..." or "Volgens branchebenchmarks...".
+- Use specific numbers where well-established (e.g. "80% van B2B-kopers doet eerst onderzoek").
+- Include 2-4 data points or research references per section where relevant.
+
+PRODUCT INTEGRATION:
+- ${productUrl ? `Naturally reference the product/service at ${productUrl} as a solution. Weave in 2-3 links per section using descriptive anchor text. Show HOW the product solves the specific problem, not just THAT it exists.` : "If a product URL is provided, reference it naturally as a solution."}
+- Use benefit-driven language: focus on what the reader gains.
+
+FORMATTING:
+- No markdown formatting (#, *, -) in the content.
+- Use line breaks between paragraphs.
+- Self-contained sections.`;
 
         const outlineModel = "claude-haiku-4-5-20251001";
         const contentModel = "claude-sonnet-4-5-20250929";
@@ -136,14 +156,23 @@ Guidelines:
         // Generate outline if not yet present
         if (outline.length === 0) {
           const targetSections = Math.max(5, Math.floor(wordCount / 600));
-          const outlinePrompt = `Create a clear outline for a ${contentTypeName} about "${subject}" for ${targetAudience}.
+          const outlinePrompt = `Create a compelling outline for a ${contentTypeName} about "${subject}" for ${targetAudience}.
 
 STRICT CONSTRAINTS:
 - Inbound goal: ${inboundGoal}
 - REQUIRED number of sections: EXACTLY ${targetSections}
 - Target total word count: ${wordCount}
 
-Respond ONLY with a JSON array of EXACTLY ${targetSections} section titles. First section must be an introduction. Last section must be a conclusion or call-to-action.`;
+OUTLINE QUALITY RULES:
+- Make section titles engaging and benefit-driven, not dry/academic.
+- Use action words and curiosity triggers where appropriate.
+- Examples of GOOD titles: "Waarom 80% van je content onzichtbaar blijft", "De verborgen kosten van een fragmentarische aanpak", "Van data naar actie: zo doe je het"
+- Examples of BAD titles: "Inleiding", "Hoofdstuk 1", "Conclusie"
+- The first section should hook the reader with a compelling question or surprising statement.
+- The last section should be a clear conclusion with a call-to-action.
+- Include sections that naturally allow for data/statistics and product references.
+
+Respond ONLY with a JSON array of EXACTLY ${targetSections} section titles.`;
 
           const outlineSystemPrompt = `${baseSystemPrompt}
 
@@ -188,7 +217,7 @@ STRICT RULES:
             ? `\nINTERNAL LINKING RULES:\n- Naturally include 1-3 internal links to (${websiteUrl}).\n- Format: [anchor text](${websiteUrl}/page)`
             : "";
 
-          const chapterPrompt = `Write a detailed section for the ${contentTypeName} about "${subject}" ${languageInstruction}.
+          const chapterPrompt = `Write a detailed, engaging section for the ${contentTypeName} about "${subject}" ${languageInstruction}.
 
 Section title: "${sectionTitle}"
 Section index: ${i + 1} of ${outline.length}
@@ -199,9 +228,26 @@ Context:
 - Inbound goal: ${inboundGoal}
 - Tone of voice: ${toneOfVoice}
 ${websiteUrl ? `- Client website: ${websiteUrl}` : ""}
+${productUrl ? `- Product URL to promote: ${productUrl}` : ""}
 
-STRICT CONTENT RULES:
+WRITING STYLE REQUIREMENTS:
 - Length: approximately ${wordsPerSection} words.
+- Open with a hook: a real-world scenario, a surprising fact, a rhetorical question, or a relatable anecdote.
+- Use storytelling techniques throughout: paint pictures with words, show don't just tell.
+- Vary paragraph length: short paragraphs (1-2 sentences) for emphasis, longer ones (4-6 sentences) for depth.
+- Include 2-4 supporting data points or industry statistics per section. Use well-known, verifiable marketing/business research. Format as "Onderzoek van [bron] toont aan dat..." or "Volgens [rapport/studie]...".
+- Use analogies and metaphors to make abstract concepts concrete.
+- Include at least one "key insight" or "onthoud dit" callout per section.
+- Address the reader directly ("je/u") for a conversational, engaging tone.
+- Use transition phrases that build anticipation ("Maar hier wordt het interessant...", "En dat is nog niet alles...", "Wat dit in de praktijk betekent...").
+
+PRODUCT INTEGRATION:
+${productUrl ? `- Naturally weave in 2-3 references to the product at ${productUrl} as a solution to the specific challenges discussed in this section.
+- Use descriptive anchor text for links: [ontdek hoe ons platform dit oplost](${productUrl}) instead of [klik hier].
+- Show HOW the product addresses the section's specific pain point, not just THAT it exists.
+- Frame product references as part of the narrative, not as interruptions.` : `- If a product URL were provided, reference it naturally as a solution.`}
+
+STRUCTURAL RULES:
 - Start with 1-2 sentences connecting from previous sections.
 - Make the section self-contained.
 - Do NOT include the section title in your response.
@@ -213,7 +259,7 @@ STRICT CONTENT RULES:
           let chapterIntro: string | undefined = undefined;
           if (!isBlog) {
             try {
-              const introPrompt = `Write a compelling 2-3 sentence introduction for chapter "${sectionTitle}" ${languageInstruction}. Topic: "${subject}". Audience: ${targetAudience}. Do NOT use markdown. Write in ${toneOfVoice} tone.`;
+              const introPrompt = `Write a compelling, attention-grabbing 2-3 sentence introduction for chapter "${sectionTitle}" ${languageInstruction}. Topic: "${subject}". Audience: ${targetAudience}. Start with a hook: a surprising statistic, a bold statement, or a relatable question. Preview what this chapter covers and why it matters. Do NOT use markdown. Write in ${toneOfVoice} tone with energy and personality.`;
               chapterIntro = (await callClaude(baseSystemPrompt, introPrompt, outlineModel, anthropicApiKey, 200)).trim() || undefined;
             } catch (e) {
               console.error("Failed to generate chapter intro:", e);

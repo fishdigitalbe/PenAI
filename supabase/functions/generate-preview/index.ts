@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
     const inboundGoal = goalInstructions[contentGoal];
 
     const ebookSystemPrompt = `
-You are an expert inbound ebook writer. You create structured, inspiring, professional ebooks ${languageConfig.prompt}.
+You are an expert inbound ebook writer and B2B storytelling specialist. You create compelling, well-researched ebooks ${languageConfig.prompt}.
 
 Context:
 - Audience: ${targetAudience}
@@ -80,16 +80,23 @@ Context:
 - Inbound stage: ${contentGoal}
 - Tone: ${toneOfVoice}
 
+WRITING STYLE:
+- Write with energy and personality. Avoid dry, academic prose.
+- Use storytelling: open with real-world scenarios or relatable anecdotes.
+- Use rhetorical questions and analogies to make concepts tangible.
+- Vary sentence length for rhythm.
+- Address the reader directly for a conversational tone.
+- Include supporting data points using well-known industry research. Format as "Onderzoek toont aan dat...".
+- ${productUrl ? `Naturally reference the product at ${productUrl} with descriptive links.` : "Reference products naturally where relevant."}
+
 Guidelines:
-- No aggressive sales.
-- Clear, structured, educational.
+- No aggressive sales. Strong educational, value-first approach.
 - Self-contained sections.
-- No invented statistics.
 - No markdown formatting.
 `.trim();
 
     const blogSystemPrompt = `
-You are a senior SEO strategist and inbound blog specialist. You write blog content ${languageConfig.prompt} that performs strongly in BOTH:
+You are a senior SEO strategist and inbound blog specialist. You write compelling, well-researched blog content ${languageConfig.prompt} that performs strongly in BOTH:
 - Google Search,
 - AI/LLM-based search (ChatGPT, Gemini, Claude).
 
@@ -100,6 +107,12 @@ Context:
 - Tone: ${toneOfVoice}
 - GEO region: ${region}
 
+WRITING STYLE:
+- Write with energy and personality. Avoid dry, academic prose.
+- Use storytelling and rhetorical questions to engage.
+- Include supporting data points using well-known industry research.
+- ${productUrl ? `Naturally reference the product at ${productUrl} with descriptive links.` : "Reference products naturally where relevant."}
+
 LLM rules:
 - Each section must be self-contained.
 - Restate key entities like "${subject}" and "${targetAudience}".
@@ -109,14 +122,13 @@ LLM rules:
 SEO rules:
 - Strong SEO title & meta.
 - Semantic keywords naturally integrated.
-- No invented % or specific data.
 `.trim();
 
     const systemPrompt = contentType === "blog" ? blogSystemPrompt : ebookSystemPrompt;
 
     const productAwareAddition =
       contentGoal === "product-aware" && productUrl
-        ? `\nIMPORTANT: include a natural, non-pushy reference to ${productUrl} as a recommended next step.`
+        ? `\nIMPORTANT: weave in 2-3 natural, non-pushy references to ${productUrl} as a recommended solution. Use descriptive anchor text like [ontdek hoe dit werkt](${productUrl}). Show HOW the product solves the specific problem, not just THAT it exists.`
         : "";
 
     const previewPrompt =
