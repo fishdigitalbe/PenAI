@@ -169,7 +169,7 @@ Deno.serve(async (req: Request) => {
 
     const userPrompt = `Schrijf een blog over: ${topic}`;
 
-    const selectedModel = model || "claude-sonnet-5";
+    const selectedModel = model || "claude-sonnet-4-5-20250929";
     console.log("[AI] Selected model:", selectedModel);
 
     const claudeApiKey = Deno.env.get("ANTHROPIC_API_KEY");

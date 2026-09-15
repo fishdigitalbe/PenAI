@@ -181,7 +181,7 @@ Respond ONLY with a JSON array of EXACTLY ${targetSections} section titles, e.g.
 `.trim();
 
     const outlineModel = "claude-haiku-4-5-20251001";
-    const contentModel = "claude-sonnet-5";
+    const contentModel = "claude-sonnet-4-5-20250929";
 
     const outlineRaw = await callClaude(
       outlineSystemPrompt,

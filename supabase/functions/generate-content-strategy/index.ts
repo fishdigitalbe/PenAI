@@ -92,7 +92,7 @@ Generate strategic plan.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-5",
+        model: "claude-sonnet-4-5-20250929",
         max_tokens: 8000,
 
         system: `${systemPrompt}\n\n${developerPrompt}`,
