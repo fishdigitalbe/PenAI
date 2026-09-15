@@ -59,18 +59,13 @@ Deno.serve(async (req: Request) => {
 
     const { data: customer, error: customerError } = await supabase
       .from("customers")
-      .select("email, full_name")
+      .select("email, full_name, first_name")
       .eq("id", orderCheck.customer_id)
       .maybeSingle();
 
     if (customerError) {
       console.error("Customer fetch error:", customerError);
     }
-
-    const order = {
-      ...orderCheck,
-      customers: customer
-    };
 
     console.log("Order found, updating status to processing");
 
@@ -81,16 +76,16 @@ Deno.serve(async (req: Request) => {
 
     const cleanedParams = {
       orderId: orderId,
-      targetAudience: order.generation_params?.targetAudience || 'general',
-      subject: order.generation_params?.subject || 'General Topic',
-      wordCount: order.generation_params?.wordCount || 5000,
-      toneOfVoice: order.generation_params?.toneOfVoice || 'professional',
-      language: order.generation_params?.language || 'nl',
-      contentType: order.generation_params?.contentType || 'ebook',
-      contentGoal: order.generation_params?.contentGoal || 'problem-aware',
-      productUrl: order.generation_params?.productUrl,
-      websiteUrl: order.generation_params?.websiteUrl,
-      createSocialAssets: order.generation_params?.createSocialAssets || false,
+      targetAudience: orderCheck.generation_params?.targetAudience || 'general',
+      subject: orderCheck.generation_params?.subject || 'General Topic',
+      wordCount: orderCheck.generation_params?.wordCount || 5000,
+      toneOfVoice: orderCheck.generation_params?.toneOfVoice || 'professional',
+      language: orderCheck.generation_params?.language || 'nl',
+      contentType: orderCheck.generation_params?.contentType || 'ebook',
+      contentGoal: orderCheck.generation_params?.contentGoal || 'problem-aware',
+      productUrl: orderCheck.generation_params?.productUrl,
+      websiteUrl: orderCheck.generation_params?.websiteUrl,
+      createSocialAssets: orderCheck.generation_params?.createSocialAssets || false,
       customerEmail: customer?.email,
       customerName: customer?.full_name,
     };
@@ -100,30 +95,92 @@ Deno.serve(async (req: Request) => {
     const generateUrl = `${supabaseUrl}/functions/v1/generate-ebook`;
     console.log("Calling generate-ebook at:", generateUrl);
 
-    const generateResponse = await fetch(generateUrl, {
+    // Fire and forget - the full flow runs async like the webhook does
+    fetch(generateUrl, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${supabaseServiceKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(cleanedParams),
-    });
+    }).then(async (ebookResponse) => {
+      if (!ebookResponse.ok) {
+        throw new Error(`Ebook generation failed: ${await ebookResponse.text()}`);
+      }
 
-    console.log("Generate ebook response status:", generateResponse.status);
-
-    if (!generateResponse.ok) {
-      const errorText = await generateResponse.text();
-      console.error("Generate ebook error response:", errorText);
+      const ebookResult = await ebookResponse.json();
 
       await supabase
-        .from("orders")
-        .update({ status: "failed" })
-        .eq("id", orderId);
+        .from('orders')
+        .update({
+          generated_content: {
+            title: orderCheck.generation_params.subject,
+            wordCount: ebookResult.wordCount,
+            chapters: ebookResult.chapters,
+          },
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', orderId);
 
-      throw new Error(`Generation failed: ${errorText}`);
-    }
+      console.info(`Ebook generation completed for order: ${orderId}`);
 
-    const result = await generateResponse.json();
+      // Generate PDF
+      let pdfUrl = null;
+      try {
+        const pdfResponse = await fetch(`${supabaseUrl}/functions/v1/generate-pdf`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({
+            orderId: orderId,
+            title: orderCheck.generation_params.subject,
+            subject: orderCheck.generation_params.subject,
+            chapters: ebookResult.chapters,
+          }),
+        });
+
+        if (pdfResponse.ok) {
+          const pdfData = await pdfResponse.json();
+          pdfUrl = pdfData.pdfUrl;
+          console.info(`PDF generated successfully: ${pdfUrl}`);
+        } else {
+          console.error('Failed to generate PDF:', await pdfResponse.text());
+        }
+      } catch (pdfError) {
+        console.error('Error generating PDF:', pdfError);
+      }
+
+      // Send notification email
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({
+            email: customer?.email,
+            firstName: customer?.first_name || customer?.full_name || '',
+            subject: orderCheck.generation_params.subject,
+            orderId: orderId,
+            pdfUrl: pdfUrl,
+          }),
+        });
+        console.info(`Notification email sent for order: ${orderId}`);
+      } catch (emailError) {
+        console.error('Error sending notification email:', emailError);
+      }
+    }).catch(async (error) => {
+      console.error('Error during retry ebook generation:', error);
+      await supabase
+        .from('orders')
+        .update({ status: 'failed' })
+        .eq('id', orderId);
+    });
+
     console.log("Generation request initiated successfully");
 
     return new Response(

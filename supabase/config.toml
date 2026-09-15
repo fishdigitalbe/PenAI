@@ -31,5 +31,8 @@ verify_jwt = true
 [functions.test-anthropic]
 verify_jwt = true
 
+[functions.retry-order]
+verify_jwt = true
+
 [functions.test-openai-key]
 verify_jwt = true
