@@ -73,9 +73,8 @@ Deno.serve(async (req: Request) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-5-20250630",
+        model: "claude-sonnet-5",
         max_tokens: 800,
-        temperature: 0.8,
         system: systemPrompt,
         messages: [
           { role: "user", content: userPrompt },

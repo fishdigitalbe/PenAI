@@ -193,9 +193,9 @@ Technische vereisten:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-5-20250630",
+        model: "claude-sonnet-5",
         max_tokens: 4000,
-        temperature: 0.8,
+
         system: systemPrompt,
         messages: [
           { role: "user", content: userPrompt },

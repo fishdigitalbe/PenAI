@@ -27,7 +27,7 @@ interface Chapter {
   content: string;
 }
 
-async function callClaude(systemPrompt: string, userPrompt: string, model: string, apiKey: string, maxTokens: number, temperature: number): Promise<string> {
+async function callClaude(systemPrompt: string, userPrompt: string, model: string, apiKey: string, maxTokens: number): Promise<string> {
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -38,7 +38,6 @@ async function callClaude(systemPrompt: string, userPrompt: string, model: strin
     body: JSON.stringify({
       model: model,
       max_tokens: maxTokens,
-      temperature: temperature,
       system: systemPrompt,
       messages: [
         { role: "user", content: userPrompt },
@@ -182,15 +181,14 @@ Respond ONLY with a JSON array of EXACTLY ${targetSections} section titles, e.g.
 `.trim();
 
     const outlineModel = "claude-haiku-4-5-20251001";
-    const contentModel = "claude-sonnet-5-20250630";
+    const contentModel = "claude-sonnet-5";
 
     const outlineRaw = await callClaude(
       outlineSystemPrompt,
       outlinePrompt,
       outlineModel,
       anthropicApiKey,
-      800,
-      0.2
+      800
     );
 
     let outlineRawClean = outlineRaw
@@ -279,8 +277,7 @@ ${internalLinkInstruction}
         chapterPrompt,
         contentModel,
         anthropicApiKey,
-        Math.min(8000, wordsPerSection * 4),
-        0.7
+        Math.min(8000, wordsPerSection * 4)
       );
 
       let chapterIntro: string | undefined = undefined;
@@ -307,8 +304,7 @@ Requirements:
             introPrompt,
             outlineModel,
             anthropicApiKey,
-            200,
-            0.7
+            200
           )).trim() || undefined;
         } catch (e) {
           console.error("Failed to generate chapter intro:", e);
@@ -376,8 +372,7 @@ Return ONLY a JSON object in this exact structure:
           seoPrompt,
           outlineModel,
           anthropicApiKey,
-          800,
-          0.3
+          800
         );
 
         let seoClean = seoRaw

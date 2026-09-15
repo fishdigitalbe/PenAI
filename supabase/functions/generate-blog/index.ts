@@ -20,7 +20,7 @@ async function generateWithClaude(systemPrompt: string, userPrompt: string, mode
     body: JSON.stringify({
       model: model,
       max_tokens: 16000,
-      temperature: 0.7,
+
       system: systemPrompt,
       messages: [
         { role: "user", content: userPrompt }
@@ -169,7 +169,7 @@ Deno.serve(async (req: Request) => {
 
     const userPrompt = `Schrijf een blog over: ${topic}`;
 
-    const selectedModel = model || "claude-sonnet-5-20250630";
+    const selectedModel = model || "claude-sonnet-5";
     console.log("[AI] Selected model:", selectedModel);
 
     const claudeApiKey = Deno.env.get("ANTHROPIC_API_KEY");

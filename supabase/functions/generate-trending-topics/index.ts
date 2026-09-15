@@ -74,7 +74,7 @@ Return ONLY a valid JSON array with this structure:
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 4000,
-        temperature: 0.8,
+
         system: systemPrompt,
         messages: [
           { role: "user", content: userPrompt },
