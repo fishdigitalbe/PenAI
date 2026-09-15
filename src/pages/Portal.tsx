@@ -1282,7 +1282,7 @@ export default function Portal() {
                       </>
                     )}
                     <div className="flex gap-2">
-                      {order.status === 'failed' && (
+                      {(order.status === 'failed' || order.status === 'pending') && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
