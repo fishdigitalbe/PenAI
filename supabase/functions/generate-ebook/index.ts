@@ -27,6 +27,34 @@ interface Chapter {
   content: string;
 }
 
+async function callClaude(systemPrompt: string, userPrompt: string, model: string, apiKey: string, maxTokens: number, temperature: number): Promise<string> {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: model,
+      max_tokens: maxTokens,
+      temperature: temperature,
+      system: systemPrompt,
+      messages: [
+        { role: "user", content: userPrompt },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Claude API error (${response.status}): ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.content?.[0]?.text ?? "";
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -45,15 +73,11 @@ Deno.serve(async (req: Request) => {
       productUrl,
       websiteUrl,
       geoRegion,
-      orderId,
     } = params;
 
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) throw new Error("OPENAI_API_KEY not configured");
+    const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!anthropicApiKey) throw new Error("ANTHROPIC_API_KEY not configured");
 
-    // -------------------------------------------------------------------------
-    // LANGUAGE INSTRUCTIONS
-    // -------------------------------------------------------------------------
     const languageInstructionMap = {
       nl: "in het Nederlands",
       fr: "en français",
@@ -70,9 +94,6 @@ Deno.serve(async (req: Request) => {
     const isBlog = contentType === "blog";
     const contentTypeName = isBlog ? "blog post" : "ebook";
 
-    // -------------------------------------------------------------------------
-    // INBOUND GOAL CONTEXT
-    // -------------------------------------------------------------------------
     const goalContextMap: Record<GenerationParams["contentGoal"], string> = {
       "problem-aware":
         "The reader is problem-aware: clearly define the problem, its symptoms, risks and missed opportunities. Help them recognize themselves in these challenges.",
@@ -87,10 +108,6 @@ Deno.serve(async (req: Request) => {
     };
 
     const inboundGoal = goalContextMap[contentGoal];
-
-    // -------------------------------------------------------------------------
-    // SYSTEM PROMPTS
-    // -------------------------------------------------------------------------
 
     const ebookSystemPrompt = `
 You are a specialized inbound ebook writer. You create clear, structured, inspiring ebooks ${languageInstruction} for business audiences.
@@ -135,9 +152,6 @@ SEO rules:
 
     const baseSystemPrompt = isBlog ? blogSystemPrompt : ebookSystemPrompt;
 
-    // -------------------------------------------------------------------------
-    // OUTLINE SYSTEM PROMPT (STRUCTURE ONLY)
-    // -------------------------------------------------------------------------
     const outlineSystemPrompt = `
 ${baseSystemPrompt}
 
@@ -167,50 +181,30 @@ Respond ONLY with a JSON array of EXACTLY ${targetSections} section titles, e.g.
 ["Introductie", "Hoofddeel 1: ...", "Hoofddeel 2: ...", "Hoofddeel 3: ...", "Conclusie & call-to-action"]
 `.trim();
 
-    // -------------------------------------------------------------------------
-    // CALL OPENAI FOR OUTLINE (gpt-4o-mini)
-    // -------------------------------------------------------------------------
-    const outlineResponse = await fetch(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${openaiApiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          temperature: 0.2,
-          max_tokens: 800,
-          messages: [
-            { role: "system", content: outlineSystemPrompt },
-            { role: "user", content: outlinePrompt },
-          ],
-        }),
-      }
+    const outlineModel = "claude-haiku-4-5-20251001";
+    const contentModel = "claude-sonnet-5-20250630";
+
+    const outlineRaw = await callClaude(
+      outlineSystemPrompt,
+      outlinePrompt,
+      outlineModel,
+      anthropicApiKey,
+      800,
+      0.2
     );
 
-    if (!outlineResponse.ok) {
-      throw new Error(`OpenAI outline error: ${await outlineResponse.text()}`);
-    }
-
-    const outlineData = await outlineResponse.json();
-    let outlineRaw: string =
-      outlineData.choices?.[0]?.message?.content?.trim() ?? "[]";
-
-    outlineRaw = outlineRaw
+    let outlineRawClean = outlineRaw
       .replace(/```json/gi, "")
       .replace(/```/g, "")
       .trim();
 
     let outline: string[];
     try {
-      const parsed = JSON.parse(outlineRaw);
+      const parsed = JSON.parse(outlineRawClean);
       if (!Array.isArray(parsed) || parsed.length === 0) {
         throw new Error("Outline is not a non-empty array");
       }
 
-      // Validate that we have the correct number of sections
       if (parsed.length < targetSections - 1) {
         console.warn(`AI generated ${parsed.length} sections but we need ${targetSections}. Using fallback.`);
         throw new Error(`Not enough sections: ${parsed.length} < ${targetSections}`);
@@ -219,7 +213,6 @@ Respond ONLY with a JSON array of EXACTLY ${targetSections} section titles, e.g.
       outline = parsed;
     } catch (e) {
       console.error("Failed to parse outline or invalid section count, falling back to default:", e);
-      // Generate a proper fallback based on targetSections
       const fallbackOutline = ["Introductie"];
       for (let i = 1; i < targetSections - 1; i++) {
         fallbackOutline.push(`Hoofddeel ${i}`);
@@ -234,9 +227,6 @@ Respond ONLY with a JSON array of EXACTLY ${targetSections} section titles, e.g.
       Math.floor(wordCount / Math.max(outline.length, 1))
     );
 
-    // -------------------------------------------------------------------------
-    // CHAPTER GENERATION (PER SECTION) — gpt-4o
-    // -------------------------------------------------------------------------
     for (let i = 0; i < outline.length; i++) {
       const sectionTitle = outline[i];
 
@@ -284,37 +274,15 @@ STRICT CONTENT RULES:
 ${internalLinkInstruction}
 `.trim();
 
-      const chapterResponse = await fetch(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${openaiApiKey}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4o",
-            temperature: 0.7,
-            max_tokens: Math.min(8000, wordsPerSection * 4),
-            messages: [
-              { role: "system", content: baseSystemPrompt },
-              { role: "user", content: chapterPrompt },
-            ],
-          }),
-        }
+      const chapterText = await callClaude(
+        baseSystemPrompt,
+        chapterPrompt,
+        contentModel,
+        anthropicApiKey,
+        Math.min(8000, wordsPerSection * 4),
+        0.7
       );
 
-      if (!chapterResponse.ok) {
-        throw new Error(
-          `OpenAI chapter error (section ${i + 1}): ${await chapterResponse.text()}`
-        );
-      }
-
-      const chapterData = await chapterResponse.json();
-      const chapterText: string =
-        chapterData.choices?.[0]?.message?.content ?? "";
-
-      // Generate intro for ebooks only
       let chapterIntro: string | undefined = undefined;
       if (!isBlog) {
         const introPrompt = `
@@ -333,29 +301,17 @@ Requirements:
 - Write in ${toneOfVoice} tone
 `.trim();
 
-        const introResponse = await fetch(
-          "https://api.openai.com/v1/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${openaiApiKey}`,
-            },
-            body: JSON.stringify({
-              model: "gpt-4o-mini",
-              temperature: 0.7,
-              max_tokens: 200,
-              messages: [
-                { role: "system", content: baseSystemPrompt },
-                { role: "user", content: introPrompt },
-              ],
-            }),
-          }
-        );
-
-        if (introResponse.ok) {
-          const introData = await introResponse.json();
-          chapterIntro = introData.choices?.[0]?.message?.content?.trim() ?? undefined;
+        try {
+          chapterIntro = (await callClaude(
+            baseSystemPrompt,
+            introPrompt,
+            outlineModel,
+            anthropicApiKey,
+            200,
+            0.7
+          )).trim() || undefined;
+        } catch (e) {
+          console.error("Failed to generate chapter intro:", e);
         }
       }
 
@@ -374,9 +330,6 @@ Requirements:
       .split(/\s+/)
       .filter((w) => w.trim().length > 0).length;
 
-    // -------------------------------------------------------------------------
-    // SEO METADATA (ONLY FOR BLOGS) — gpt-4o-mini
-    // -------------------------------------------------------------------------
     let seoMetadata: any = undefined;
     let structuredData: any = null;
 
@@ -417,52 +370,34 @@ Return ONLY a JSON object in this exact structure:
 }
 `.trim();
 
-      const seoResponse = await fetch(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${openaiApiKey}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            temperature: 0.3,
-            max_tokens: 800,
-            messages: [
-              { role: "system", content: seoSystemPrompt },
-              { role: "user", content: seoPrompt },
-            ],
-          }),
-        }
-      );
+      try {
+        const seoRaw = await callClaude(
+          seoSystemPrompt,
+          seoPrompt,
+          outlineModel,
+          anthropicApiKey,
+          800,
+          0.3
+        );
 
-      if (seoResponse.ok) {
-        const seoData = await seoResponse.json();
-        let seoRaw: string =
-          seoData.choices?.[0]?.message?.content?.trim() ?? "{}";
-
-        seoRaw = seoRaw
+        let seoClean = seoRaw
           .replace(/```json/gi, "")
           .replace(/```/g, "")
           .trim();
 
-        try {
-          seoMetadata = JSON.parse(seoRaw);
-        } catch (e) {
-          console.error("Failed to parse SEO metadata:", e);
-          seoMetadata = {
-            metaTitle: `${subject} - Complete guide for ${targetAudience}`,
-            metaDescription: `Comprehensive guide about ${subject} for ${targetAudience}. Learn everything you need to know.`,
-            h1: subject,
-            keywords: [subject, targetAudience],
-            ogTitle: subject,
-            ogDescription: `Complete guide about ${subject}`,
-          };
-        }
+        seoMetadata = JSON.parse(seoClean);
+      } catch (e) {
+        console.error("Failed to parse SEO metadata:", e);
+        seoMetadata = {
+          metaTitle: `${subject} - Complete guide for ${targetAudience}`,
+          metaDescription: `Comprehensive guide about ${subject} for ${targetAudience}. Learn everything you need to know.`,
+          h1: subject,
+          keywords: [subject, targetAudience],
+          ogTitle: subject,
+          ogDescription: `Complete guide about ${subject}`,
+        };
       }
 
-      // Generate structured data for the blog
       structuredData = {
         "@context": "https://schema.org",
         "@type": "BlogPosting",
@@ -479,9 +414,6 @@ Return ONLY a JSON object in this exact structure:
       };
     }
 
-    // -------------------------------------------------------------------------
-    // RESPONSE
-    // -------------------------------------------------------------------------
     return new Response(
       JSON.stringify({
         success: true,

@@ -41,12 +41,9 @@ Deno.serve(async (req: Request) => {
       geoRegion,
     } = generationParams;
 
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) throw new Error("OpenAI API key not configured");
+    const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!anthropicApiKey) throw new Error("Anthropic API key not configured");
 
-    // -------------------------------------------------------------
-    // LANGUAGE CONFIG
-    // -------------------------------------------------------------
     const languageInstructions = {
       nl: { prompt: "in het Nederlands", defaultTitle: "Een Uitgebreide Gids" },
       fr: { prompt: "en français", defaultTitle: "Un Guide Complet" },
@@ -61,9 +58,6 @@ Deno.serve(async (req: Request) => {
 
     const region = geoRegion || "de regio";
 
-    // -------------------------------------------------------------
-    // INBOUND GOAL INSTRUCTIONS
-    // -------------------------------------------------------------
     const goalInstructions = {
       "problem-aware":
         "The reader is problem-aware: clearly define the problem, its symptoms, risks and missed opportunities.",
@@ -77,9 +71,6 @@ Deno.serve(async (req: Request) => {
 
     const inboundGoal = goalInstructions[contentGoal];
 
-    // -------------------------------------------------------------
-    // SYSTEM PROMPT — EBOOK PREVIEW
-    // -------------------------------------------------------------
     const ebookSystemPrompt = `
 You are an expert inbound ebook writer. You create structured, inspiring, professional ebooks ${languageConfig.prompt}.
 
@@ -97,9 +88,6 @@ Guidelines:
 - No markdown formatting.
 `.trim();
 
-    // -------------------------------------------------------------
-    // SYSTEM PROMPT — BLOG (SEO + LLM optimized)
-    // -------------------------------------------------------------
     const blogSystemPrompt = `
 You are a senior SEO strategist and inbound blog specialist. You write blog content ${languageConfig.prompt} that performs strongly in BOTH:
 - Google Search,
@@ -126,17 +114,11 @@ SEO rules:
 
     const systemPrompt = contentType === "blog" ? blogSystemPrompt : ebookSystemPrompt;
 
-    // -------------------------------------------------------------
-    // PRODUCT CTA (IF PRODUCT-AWARE)
-    // -------------------------------------------------------------
     const productAwareAddition =
       contentGoal === "product-aware" && productUrl
         ? `\nIMPORTANT: include a natural, non-pushy reference to ${productUrl} as a recommended next step.`
         : "";
 
-    // -------------------------------------------------------------
-    // USER PREVIEW PROMPTS (STRICT FORMATTING)
-    // -------------------------------------------------------------
     const previewPrompt =
       contentType === "blog"
         ? `
@@ -220,21 +202,19 @@ First chapter:
 - No invented statistics.
 `.trim();
 
-    // -------------------------------------------------------------
-    // CALL OPENAI (gpt-4o-mini)
-    // -------------------------------------------------------------
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
+        "x-api-key": anthropicApiKey,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
-        Authorization: `Bearer ${openaiApiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1500,
         temperature: 0.7,
-        max_tokens: 1200,
+        system: systemPrompt,
         messages: [
-          { role: "system", content: systemPrompt },
           { role: "user", content: previewPrompt },
         ],
       }),
@@ -243,11 +223,8 @@ First chapter:
     if (!response.ok) throw new Error(await response.text());
 
     const data = await response.json();
-    const rawContent = data.choices?.[0]?.message?.content ?? "";
+    const rawContent = data.content?.[0]?.text ?? "";
 
-    // -------------------------------------------------------------
-    // TITLE EXTRACTIE
-    // -------------------------------------------------------------
     const lines = rawContent.split("\n").map((l) => l.trim()).filter(Boolean);
     const firstLine = lines[0] || `${subject}: ${languageConfig.defaultTitle}`;
     const cleanedTitle = firstLine.replace(/^Title:\s*/i, "").trim();
@@ -255,9 +232,6 @@ First chapter:
     const previewText = rawContent;
     const wordCountClean = previewText.split(/\s+/).filter(Boolean).length;
 
-    // -------------------------------------------------------------
-    // OPTIONAL COVER IMAGE VIA GEMINI
-    // -------------------------------------------------------------
     let previewImage = null;
     const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
 
@@ -287,9 +261,6 @@ First chapter:
   }
 });
 
-// -------------------------------------------------------------
-// PEN DRAWING IMAGE GENERATOR (Gemini 3.0)
-// -------------------------------------------------------------
 async function generatePenDrawingImage(subject: string, geminiApiKey: string) {
   try {
     const prompt = `Create a black-and-white pen drawing illustration in clean line-art style for a publication about ${subject}. Professional, artistic, minimalistic.`;

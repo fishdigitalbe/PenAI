@@ -96,7 +96,7 @@ export default function BlogAdmin() {
     keywords: '',
     tone: 'professional',
     length: 'medium',
-    model: 'claude-opus-4-5-20251101',
+    model: 'claude-sonnet-5-20250630',
   });
 
   const [showPexelsSearch, setShowPexelsSearch] = useState(false);
@@ -205,7 +205,7 @@ export default function BlogAdmin() {
         ai_model: data.aiModel || '',
       });
 
-      setGenerateForm({ topic: '', keywords: '', tone: 'professional', length: 'medium', model: 'claude-opus-4-5-20251101' });
+      setGenerateForm({ topic: '', keywords: '', tone: 'professional', length: 'medium', model: 'claude-sonnet-5-20250630' });
       alert('Blog succesvol gegenereerd! Controleer en bewerk indien nodig.');
     } catch (error) {
       console.error('Error generating blog:', error);
@@ -668,17 +668,13 @@ export default function BlogAdmin() {
                       onChange={(e) => setGenerateForm({ ...generateForm, model: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     >
-                      <option value="gpt-4o-mini">ChatGPT (GPT-4o-mini)</option>
-                      <option value="gpt-4o">ChatGPT (GPT-4o)</option>
-                      <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
+                      <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (snel)</option>
+                      <option value="claude-sonnet-5-20250630">Claude Sonnet 5 (standaard)</option>
                       <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
-                      <option value="claude-opus-4-5-20251101">Claude Opus 4.5</option>
+                      <option value="claude-opus-5-20250724">Claude Opus 5 (hoogste kwaliteit)</option>
                       <option value="claude-opus-4-1-20250805">Claude Opus 4.1</option>
                       <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
-                      <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
-                      <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
-                      <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
-                      <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+
                     </select>
                   </div>
                 </div>

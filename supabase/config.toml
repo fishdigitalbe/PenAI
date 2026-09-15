@@ -1,0 +1,35 @@
+[functions.generate-blog]
+verify_jwt = true
+
+[functions.generate-content-strategy]
+verify_jwt = true
+
+[functions.generate-ebook]
+verify_jwt = true
+
+[functions.generate-inspiration]
+verify_jwt = false
+
+[functions.generate-linkedin-post]
+verify_jwt = true
+
+[functions.generate-preview]
+verify_jwt = false
+
+[functions.generate-promotional-emails]
+verify_jwt = true
+
+[functions.generate-trending-topics]
+verify_jwt = true
+
+[functions.repurpose-content]
+verify_jwt = false
+
+[functions.suggest-subjects]
+verify_jwt = true
+
+[functions.test-anthropic]
+verify_jwt = true
+
+[functions.test-openai-key]
+verify_jwt = true

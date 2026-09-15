@@ -76,9 +76,9 @@ Deno.serve(async (req: Request) => {
       throw new Error("No content available to promote");
     }
 
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) {
-      throw new Error("OpenAI API key not configured");
+    const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!anthropicApiKey) {
+      throw new Error("Anthropic API key not configured");
     }
 
     const contentData = typeof order.generated_content === "string"
@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
 
     const language = generationParams?.language || "Nederlands";
     const toneOfVoice = generationParams?.toneOfVoice || "professioneel maar toegankelijk";
-    const contentGoal = generationParams?.contentGoal || null; // bv. 'problem-aware' | 'solution-aware' | 'product-aware'
+    const contentGoal = generationParams?.contentGoal || null;
 
     let contentSummary = "";
     if (contentData?.chapters && Array.isArray(contentData.chapters)) {
@@ -109,7 +109,7 @@ Deno.serve(async (req: Request) => {
 
     const systemPrompt = `
 Je bent een senior e-mailmarketing copywriter en CRM-strateeg.
-Je specialiseert je in B2B-nurturingcampagnes voor kmo’s en middelgrote bedrijven.
+Je specialiseert je in B2B-nurturingcampagnes voor kmo's en middelgrote bedrijven.
 
 Jouw focus:
 - Sterke, conversiegerichte e-mails die interesse opbouwen en lezers richting actie sturen.
@@ -160,7 +160,7 @@ Schrijfregels per e-mail:
 
 Subject lines:
 - Maximaal 50 tekens.
-- Geen emoji’s, geen ALL CAPS.
+- Geen emoji's, geen ALL CAPS.
 - Maak ze concreet en nieuwsgierig, niet clickbait.
 
 Outputstructuur:
@@ -182,35 +182,35 @@ Technische vereisten:
   }
 ]
 - Gebruik uitsluitend dubbele aanhalingstekens in de JSON.
-- Voeg GEEN markdown, GEEN code fences (zoals ```json) en GEEN extra tekst toe buiten de JSON-array.
+- Voeg GEEN markdown, GEEN code fences (zoals \`\`\`json) en GEEN extra tekst toe buiten de JSON-array.
 `.trim();
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
+        "x-api-key": anthropicApiKey,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${openaiApiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "claude-sonnet-5-20250630",
+        max_tokens: 4000,
+        temperature: 0.8,
+        system: systemPrompt,
         messages: [
-          { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        temperature: 0.8,
-        max_tokens: 3000,
       }),
     });
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`OpenAI API error: ${error}`);
+      throw new Error(`Claude API error: ${error}`);
     }
 
     const data = await response.json();
-    let content = data.choices?.[0]?.message?.content ?? "";
+    let content = data.content[0].text ?? "";
 
-    // Extra safeguard als het model tóch code fences zou toevoegen
     content = content.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
 
     let emails: Email[];

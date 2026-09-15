@@ -31,9 +31,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) {
-      throw new Error("OpenAI API key not configured");
+    const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!anthropicApiKey) {
+      throw new Error("Anthropic API key not configured");
     }
 
     let websiteContent = "";
@@ -65,30 +65,31 @@ Deno.serve(async (req: Request) => {
       ? `Analyseer de volgende website content en stel 5 relevante ebook onderwerpen voor die aansluiten bij de sector en expertise van dit bedrijf:\n\n${websiteContent}\n\nGeef 5 concrete, specifieke ebook onderwerpen die:\n1. Aansluiten bij de sector en diensten van het bedrijf\n2. Waarde bieden aan hun doelgroep\n3. Hun expertise demonstreren\n4. Praktisch en actionable zijn\n5. Niet te breed of te smal zijn (geschikt voor een ebook van 5000-10000 woorden)\n\nFormatteer je antwoord als een genummerde lijst met enkel de onderwerpen, zonder extra uitleg. Schrijf elk onderwerp als een grammaticaal correcte zin in normale schrijfwijze (niet elk woord met een hoofdletter).`
       : `Geef 5 algemene ebook onderwerpen die waardevol zijn voor de meeste bedrijven.\n\nFormatteer je antwoord als een genummerde lijst met enkel de onderwerpen, zonder extra uitleg. Schrijf elk onderwerp als een grammaticaal correcte zin in normale schrijfwijze (niet elk woord met een hoofdletter).`;
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
+        "x-api-key": anthropicApiKey,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${openaiApiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "claude-sonnet-5-20250630",
+        max_tokens: 800,
+        temperature: 0.8,
+        system: systemPrompt,
         messages: [
-          { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        temperature: 0.8,
-        max_tokens: 500,
       }),
     });
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`OpenAI API error: ${error}`);
+      throw new Error(`Claude API error: ${error}`);
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
+    const content = data.content[0].text;
 
     const subjects = content
       .split("\n")

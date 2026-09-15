@@ -39,9 +39,9 @@ Deno.serve(async (req: Request) => {
   try {
     const { funnelStage, productUrl, targetAudience, language }: InspirationRequest = await req.json();
 
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) {
-      throw new Error("OpenAI API key not configured");
+    const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!anthropicApiKey) {
+      throw new Error("Anthropic API key not configured");
     }
 
     const funnelStageDescriptions = {
@@ -122,30 +122,31 @@ Respond ONLY with a valid JSON array of 5 objects, each with this exact structur
 
 Ensure the JSON is properly formatted and can be parsed directly.`;
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
+        "x-api-key": anthropicApiKey,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${openaiApiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "claude-sonnet-5-20250630",
+        max_tokens: 4000,
+        temperature: 0.8,
+        system: systemPrompt,
         messages: [
-          { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        temperature: 0.8,
-        max_tokens: 2000,
       }),
     });
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`OpenAI API error: ${error}`);
+      throw new Error(`Claude API error: ${error}`);
     }
 
     const data = await response.json();
-    let content = data.choices[0].message.content;
+    let content = data.content[0].text;
 
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 

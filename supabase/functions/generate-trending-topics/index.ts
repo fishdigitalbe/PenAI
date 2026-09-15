@@ -24,9 +24,9 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      throw new Error('OpenAI API key not configured');
+    const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!anthropicApiKey) {
+      throw new Error("Anthropic API key not configured");
     }
 
     const categories = [
@@ -39,7 +39,9 @@ Deno.serve(async (req: Request) => {
       'Finance'
     ];
 
-    const prompt = `Generate 21 trending topics (3 per category) for content creation in 2024.
+    const systemPrompt = "You are a content strategy expert. Generate trending topics in valid JSON format only.";
+
+    const userPrompt = `Generate 21 trending topics (3 per category) for content creation in 2026.
 
 Categories: ${categories.join(', ')}
 
@@ -62,37 +64,32 @@ Return ONLY a valid JSON array with this structure:
   }
 ]`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
+        "x-api-key": anthropicApiKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a content strategy expert. Generate trending topics in valid JSON format only.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 4000,
         temperature: 0.8,
-        max_tokens: 3000,
+        system: systemPrompt,
+        messages: [
+          { role: "user", content: userPrompt },
+        ],
       }),
     });
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`OpenAI API error: ${error}`);
+      throw new Error(`Claude API error: ${error}`);
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content.trim();
-    
+    const content = data.content[0].text.trim();
+
     let topics: any[];
     try {
       topics = JSON.parse(content);
@@ -101,7 +98,7 @@ Return ONLY a valid JSON array with this structure:
       if (jsonMatch) {
         topics = JSON.parse(jsonMatch[0]);
       } else {
-        throw new Error('Failed to parse AI response as JSON');
+        throw new Error("Failed to parse AI response as JSON");
       }
     }
 
@@ -119,22 +116,22 @@ Return ONLY a valid JSON array with this structure:
       {
         headers: {
           ...corsHeaders,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       }
     );
   } catch (error) {
-    console.error('Error generating trending topics:', error);
+    console.error("Error generating trending topics:", error);
     return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Failed to generate trending topics',
+      JSON.stringify({
+        error: error instanceof Error ? error.message : "Failed to generate trending topics",
         topics: []
       }),
       {
         status: 500,
         headers: {
           ...corsHeaders,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       }
     );

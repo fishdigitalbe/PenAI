@@ -27,12 +27,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) {
-      throw new Error("OpenAI API key not configured");
+    const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!anthropicApiKey) {
+      throw new Error("Anthropic API key not configured");
     }
 
-    const prompt = `Maak een pakkende LinkedIn post in het NEDERLANDS om dit blogartikel te promoten. De post moet:
+    const systemPrompt = "Je bent een professionele LinkedIn content creator die Nederlandse posts schrijft. Maak boeiende LinkedIn posts in het Nederlands die engagement en clicks genereren.";
+
+    const userPrompt = `Maak een pakkende LinkedIn post in het NEDERLANDS om dit blogartikel te promoten. De post moet:
 - Professioneel en boeiend zijn
 - Tussen de 150-300 karakters lang zijn (optimale LinkedIn lengte)
 - Relevante hashtags bevatten (maximaal 2-3)
@@ -47,41 +49,32 @@ Blog URL: ${blogUrl}
 
 Genereer ALLEEN de LinkedIn post tekst in het Nederlands, niets anders.`;
 
-    const openaiResponse = await fetch(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${openaiApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content:
-                "Je bent een professionele LinkedIn content creator die Nederlandse posts schrijft. Maak boeiende LinkedIn posts in het Nederlands die engagement en clicks genereren.",
-            },
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
-          temperature: 0.7,
-          max_tokens: 500,
-        }),
-      }
-    );
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicApiKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 500,
+        temperature: 0.7,
+        system: systemPrompt,
+        messages: [
+          { role: "user", content: userPrompt },
+        ],
+      }),
+    });
 
-    if (!openaiResponse.ok) {
-      const errorData = await openaiResponse.text();
-      console.error("OpenAI API error:", errorData);
-      throw new Error(`OpenAI API error: ${openaiResponse.status}`);
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("Claude API error:", errorData);
+      throw new Error(`Claude API error: ${response.status}`);
     }
 
-    const openaiData = await openaiResponse.json();
-    const linkedinPost = openaiData.choices[0].message.content.trim();
+    const data = await response.json();
+    const linkedinPost = data.content[0].text.trim();
 
     return new Response(
       JSON.stringify({

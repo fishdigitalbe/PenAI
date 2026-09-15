@@ -15,14 +15,18 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
     const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
-    
+    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+
     const result = {
-      openaiConfigured: !!openaiApiKey,
-      openaiKeyPrefix: openaiApiKey ? openaiApiKey.substring(0, 10) + "..." : "NOT SET",
       anthropicConfigured: !!anthropicApiKey,
       anthropicKeyPrefix: anthropicApiKey ? anthropicApiKey.substring(0, 10) + "..." : "NOT SET",
+      geminiConfigured: !!geminiApiKey,
+      geminiKeyPrefix: geminiApiKey ? geminiApiKey.substring(0, 10) + "..." : "NOT SET",
+      openaiConfigured: !!openaiApiKey,
+      openaiKeyPrefix: openaiApiKey ? openaiApiKey.substring(0, 10) + "..." : "NOT SET",
+      openaiNote: openaiApiKey ? "OpenAI key is only used for DALL-E infographic generation" : "OpenAI key not set - infographics will not work",
       allEnvVars: Object.keys(Deno.env.toObject()).sort()
     };
 

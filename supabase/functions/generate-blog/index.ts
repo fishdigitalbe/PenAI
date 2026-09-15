@@ -7,79 +7,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-async function generateWithOpenAI(systemPrompt: string, userPrompt: string, model: string, apiKey: string) {
-  console.log("[OpenAI] Starting request with model:", model);
-
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 8000,
-      response_format: { type: "json_object" }
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    console.error("[OpenAI] API error response:", error);
-    console.error("[OpenAI] API status:", response.status);
-
-    let errorDetails = error;
-    try {
-      const errorJson = JSON.parse(error);
-      errorDetails = errorJson.error?.message || error;
-    } catch (e) {
-      // Not JSON, use raw text
-    }
-
-    throw new Error(`OpenAI API error (${response.status}): ${errorDetails}`);
-  }
-
-  const data = await response.json();
-  console.log("[OpenAI] Response received, length:", JSON.stringify(data).length);
-  return data.choices[0]?.message?.content;
-}
-
-function repairClaudeJson(content: string): string {
-  console.log("[Claude] Attempting to repair JSON");
-
-  let repaired = content.trim();
-
-  // Remove any markdown code blocks
-  repaired = repaired.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-
-  // Find the JSON object boundaries
-  const firstBrace = repaired.indexOf('{');
-  const lastBrace = repaired.lastIndexOf('}');
-
-  if (firstBrace === -1 || lastBrace === -1) {
-    throw new Error("Could not find JSON object boundaries");
-  }
-
-  repaired = repaired.substring(firstBrace, lastBrace + 1);
-
-  // Try to fix common JSON issues
-  // Fix unescaped quotes in strings (this is tricky, but we'll do our best)
-  // We need to be careful not to break intentional quotes
-
-  console.log("[Claude] Repaired JSON length:", repaired.length);
-  return repaired;
-}
-
 async function generateWithClaude(systemPrompt: string, userPrompt: string, model: string, apiKey: string) {
   console.log("[Claude] Starting request with model:", model);
-
-  // For Claude, we'll use a more explicit system prompt
-  const claudeSystemPrompt = systemPrompt + `\n\nIMPORTANT FOR CLAUDE:\n- Your response will be parsed as JSON\n- Ensure all HTML content is properly escaped\n- Use single quotes in HTML (e.g., <a href='/blog/slug' class='text-blue-600'>)\n- If you need double quotes in HTML, escape them as \\"\n- Ensure the JSON is complete and not truncated\n- Test your JSON mentally before responding`;
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -92,7 +21,7 @@ async function generateWithClaude(systemPrompt: string, userPrompt: string, mode
       model: model,
       max_tokens: 16000,
       temperature: 0.7,
-      system: claudeSystemPrompt,
+      system: systemPrompt,
       messages: [
         { role: "user", content: userPrompt }
       ],
@@ -120,57 +49,12 @@ async function generateWithClaude(systemPrompt: string, userPrompt: string, mode
 
   let content = data.content[0]?.text;
 
-  // Check if response was truncated
   if (data.stop_reason === "max_tokens") {
     console.warn("[Claude] Response was truncated due to max_tokens limit");
     throw new Error("De AI response was te lang en werd afgekapt. Probeer een kortere blog te genereren.");
   }
 
   return content;
-}
-
-async function generateWithGemini(systemPrompt: string, userPrompt: string, model: string, apiKey: string) {
-  const combinedPrompt = `${systemPrompt}\n\n${userPrompt}`;
-  console.log("[Gemini] Starting request with model:", model);
-
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      contents: [{
-        parts: [{
-          text: combinedPrompt
-        }]
-      }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 8000,
-        responseMimeType: "application/json"
-      }
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    console.error("[Gemini] API error response:", error);
-    console.error("[Gemini] API status:", response.status);
-
-    let errorDetails = error;
-    try {
-      const errorJson = JSON.parse(error);
-      errorDetails = errorJson.error?.message || error;
-    } catch (e) {
-      // Not JSON, use raw text
-    }
-
-    throw new Error(`Gemini API error (${response.status}): ${errorDetails}`);
-  }
-
-  const data = await response.json();
-  console.log("[Gemini] Response received, length:", JSON.stringify(data).length);
-  return data.candidates[0]?.content?.parts[0]?.text;
 }
 
 function fixHeadingCapitalization(content: string): string {
@@ -281,42 +165,20 @@ Deno.serve(async (req: Request) => {
       internalLinksContext = `\n\nBESCHIKBARE BLOGS VOOR INTERNE LINKING:\n${blogsForLinking.map((blog: any, idx: number) => `${idx + 1}. \"${blog.title}\" (slug: ${blog.slug})`).join("\n")}\n\nVoeg waar relevant 1-2 interne links toe: <a href=\"/blog/[slug]\" class=\"text-blue-600 hover:underline\">[tekst]</a>`;
     }
 
-    const systemPrompt = `Je bent een ervaren blog schrijver. Schrijf een SEO-geoptimaliseerde blog post in het Nederlands.\n\nSPECIFICATIES:\n- Onderwerp: ${topic}\n${keywords ? `- Keywords: ${keywords}` : ""}\n- Toon: ${toneGuide[tone as keyof typeof toneGuide] || "professioneel"}\n- Lengte: ${lengthGuide[length as keyof typeof lengthGuide] || "1000-1500 woorden"}${internalLinksContext}\n\nTITEL:\n- Maak een pakkende, SEO-geoptimaliseerde titel\n- Gebruik getallen of power words waar passend\n- Voorbeelden: \"5 Strategieën om [X]\", \"Hoe [Y] bereiken\", \"Complete Gids: [Z]\"\n\nSTRUCTUUR:\n1. Pakkende titel\n2. Korte introductie (2-3 zinnen voor excerpt)\n3. Hoofdsecties met H2/H3 kopjes\n4. Praktische tips en voorbeelden\n5. Conclusie\n\nGebruik korte paragrafen, lijsten en natuurlijke keyword integratie.${blogsForLinking.length > 0 ? " Voeg 1-2 interne links toe." : ""}\n\nCRITICAL JSON FORMATTING RULES:\n- Respond with ONLY valid, parseable JSON\n- ALL strings must properly escape quotes: use \\\\\" for quotes inside strings\n- ALL newlines in content must be escaped as \\\\n\n- Use single quotes in HTML attributes to minimize escaping needs\n- NEVER include code blocks or markdown formatting\n- The JSON must be valid and parseable by JSON.parse()\n\nRequired JSON structure:\n{\n  \"title\": \"string\",\n  \"excerpt\": \"string\",\n  \"content\": \"string with properly escaped HTML\",\n  \"metaDescription\": \"string max 160 chars\",\n  \"suggestedTags\": [\"tag1\", \"tag2\", \"tag3\"]\n}`;
+    const systemPrompt = `Je bent een ervaren blog schrijver. Schrijf een SEO-geoptimaliseerde blog post in het Nederlands.\n\nSPECIFICATIES:\n- Onderwerp: ${topic}\n${keywords ? `- Keywords: ${keywords}` : ""}\n- Toon: ${toneGuide[tone as keyof typeof toneGuide] || "professioneel"}\n- Lengte: ${lengthGuide[length as keyof typeof lengthGuide] || "1000-1500 woorden"}${internalLinksContext}\n\nTITEL:\n- Maak een pakkende, SEO-geoptimaliseerde titel\n- Gebruik getallen of power words waar passend\n- Voorbeelden: "5 Strategieën om [X]", "Hoe [Y] bereiken", "Complete Gids: [Z]"\n\nSTRUCTUUR:\n1. Pakkende titel\n2. Korte introductie (2-3 zinnen voor excerpt)\n3. Hoofdsecties met H2/H3 kopjes\n4. Praktische tips en voorbeelden\n5. Conclusie\n\nGebruik korte paragrafen, lijsten en natuurlijke keyword integratie.${blogsForLinking.length > 0 ? " Voeg 1-2 interne links toe." : ""}\n\nCRITICAL JSON FORMATTING RULES:\n- Respond with ONLY valid, parseable JSON\n- ALL strings must properly escape quotes: use \\\\\" for quotes inside strings\n- ALL newlines in content must be escaped as \\\\n\n- Use single quotes in HTML attributes to minimize escaping needs\n- NEVER include code blocks or markdown formatting\n- The JSON must be valid and parseable by JSON.parse()\n\nRequired JSON structure:\n{\n  \"title\": \"string\",\n  \"excerpt\": \"string\",\n  \"content\": \"string with properly escaped HTML\",\n  \"metaDescription\": \"string max 160 chars\",\n  \"suggestedTags\": [\"tag1\", \"tag2\", \"tag3\"]\n}`;
 
     const userPrompt = `Schrijf een blog over: ${topic}`;
 
-    let content: string;
-    const selectedModel = model || "claude-opus-4-5-20251101";
+    const selectedModel = model || "claude-sonnet-5-20250630";
     console.log("[AI] Selected model:", selectedModel);
 
-    if (selectedModel.startsWith("gpt-")) {
-      const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-      if (!openaiApiKey) {
-        console.error("[AI] OpenAI API key not configured");
-        throw new Error("OpenAI API key niet geconfigureerd. Contacteer de beheerder.");
-      }
-      console.log("[AI] Generating with OpenAI...");
-      content = await generateWithOpenAI(systemPrompt, userPrompt, selectedModel, openaiApiKey);
-    } else if (selectedModel.startsWith("claude-")) {
-      const claudeApiKey = Deno.env.get("ANTHROPIC_API_KEY");
-      if (!claudeApiKey) {
-        console.error("[AI] Anthropic API key not configured");
-        throw new Error("Claude API key niet geconfigureerd. Contacteer de beheerder.");
-      }
-      console.log("[AI] Generating with Claude...");
-      content = await generateWithClaude(systemPrompt, userPrompt, selectedModel, claudeApiKey);
-    } else if (selectedModel.startsWith("gemini-")) {
-      const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
-      if (!geminiApiKey) {
-        console.error("[AI] Gemini API key not configured");
-        throw new Error("Gemini API key niet geconfigureerd. Contacteer de beheerder.");
-      }
-      console.log("[AI] Generating with Gemini...");
-      content = await generateWithGemini(systemPrompt, userPrompt, selectedModel, geminiApiKey);
-    } else {
-      console.error("[AI] Unsupported model:", selectedModel);
-      throw new Error(`Model niet ondersteund: ${selectedModel}`);
+    const claudeApiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!claudeApiKey) {
+      console.error("[AI] Anthropic API key not configured");
+      throw new Error("Anthropic API key niet geconfigureerd. Contacteer de beheerder.");
     }
+    console.log("[AI] Generating with Claude...");
+    const content = await generateWithClaude(systemPrompt, userPrompt, selectedModel, claudeApiKey);
 
     if (!content) {
       console.error("[AI] No content generated");
@@ -325,9 +187,7 @@ Deno.serve(async (req: Request) => {
 
     console.log("[Parse] Content length:", content.length);
     console.log("[Parse] Content preview (first 500 chars):", content.substring(0, 500));
-    console.log("[Parse] Content preview (last 500 chars):", content.substring(Math.max(0, content.length - 500)));
 
-    const isClaude = selectedModel.startsWith("claude-");
     let blogData;
     try {
       let jsonContent = content.trim();
@@ -348,45 +208,27 @@ Deno.serve(async (req: Request) => {
       } catch (firstParseError) {
         console.log("[Parse] First parse failed:", firstParseError);
 
-        if (isClaude) {
-          console.log("[Parse] Trying Claude-specific JSON repair");
+        console.log("[Parse] Trying to extract JSON object");
+        const jsonMatch = jsonContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const jsonString = jsonMatch[0];
+          console.log("[Parse] Found JSON object, attempting to parse (length:", jsonString.length, ")");
+
           try {
-            const repairedJson = repairClaudeJson(jsonContent);
-            blogData = JSON.parse(repairedJson);
-            console.log("[Parse] Successfully parsed after Claude repair");
-          } catch (repairError) {
-            console.error("[Parse] Claude repair failed:", repairError);
-            // Continue to standard extraction method
+            blogData = JSON.parse(jsonString);
+            console.log("[Parse] Successfully parsed after extraction");
+          } catch (secondParseError) {
+            console.error("[Parse] Second parse failed, content sample:", jsonString.substring(0, 1000));
+            throw secondParseError;
           }
-        }
-
-        if (!blogData) {
-          console.log("[Parse] Trying to extract JSON object");
-          const jsonMatch = jsonContent.match(/\\{[\\s\\S]*\\}/);
-          if (jsonMatch) {
-            const jsonString = jsonMatch[0];
-            console.log("[Parse] Found JSON object, attempting to parse (length:", jsonString.length, ")");
-
-            try {
-              blogData = JSON.parse(jsonString);
-              console.log("[Parse] Successfully parsed after extraction");
-            } catch (secondParseError) {
-              console.error("[Parse] Second parse failed, content sample:", jsonString.substring(0, 1000));
-              throw secondParseError;
-            }
-          } else {
-            throw firstParseError;
-          }
+        } else {
+          throw firstParseError;
         }
       }
     } catch (parseError) {
       console.error("[Parse] Failed to parse JSON after all attempts");
       console.error("[Parse] Full content:", content);
       console.error("[Parse] Parse error:", parseError);
-
-      if (isClaude) {
-        throw new Error(`Claude kon geen geldige JSON genereren. Dit kan gebeuren bij zeer lange blogs. Probeer: 1) Een kortere lengte te kiezen, 2) Een ander AI model te gebruiken (GPT-4o of Gemini), of 3) Het onderwerp meer te beperken.`);
-      }
 
       throw new Error(`Kon AI response niet parsen: ${parseError instanceof Error ? parseError.message : 'Onbekende fout'}. De AI response was mogelijk te lang of bevat ongeldige karakters.`);
     }
@@ -395,7 +237,7 @@ Deno.serve(async (req: Request) => {
     const slug = blogData.title
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[\\u0300-\\u036f]/g, "")
+      .replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
       .substring(0, 100);

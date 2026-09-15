@@ -179,7 +179,7 @@ Deno.serve(async (req: Request) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "claude-opus-4-5-20251101",
+          model: "claude-opus-5-20250724",
           max_tokens: 4000,
           temperature: 0.7,
           messages: [

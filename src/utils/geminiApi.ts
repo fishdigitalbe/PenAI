@@ -18,7 +18,7 @@ export async function generatePenDrawingImage(
     const enhancedPrompt = `Create a detailed pen drawing illustration in black and white line art style. ${prompt}. Style: hand-drawn pen sketch, clean lines, artistic, professional illustration suitable for an ebook.`;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0-flash:generateContent?key=${geminiApiKey}`,
       {
         method: 'POST',
         headers: {

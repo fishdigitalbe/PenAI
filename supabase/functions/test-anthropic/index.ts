@@ -44,7 +44,7 @@ Deno.serve(async (req: Request) => {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-3-haiku-20240307",
+        model: "claude-haiku-4-5-20251001",
         max_tokens: 100,
         messages: [
           {
@@ -84,7 +84,7 @@ Deno.serve(async (req: Request) => {
         message: "Anthropic API werkt correct!",
         aiResponse: aiResponse,
         apiKeyPrefix: anthropicApiKey.substring(0, 20) + "...",
-        model: "claude-3-haiku-20240307",
+        model: "claude-haiku-4-5-20251001",
         tokenUsage: {
           input: data.usage?.input_tokens || 0,
           output: data.usage?.output_tokens || 0,
