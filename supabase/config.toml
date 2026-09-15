@@ -5,7 +5,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.generate-ebook]
-verify_jwt = true
+verify_jwt = false
 
 [functions.generate-inspiration]
 verify_jwt = false
